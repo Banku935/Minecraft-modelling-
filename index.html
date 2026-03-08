@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Minecraft 3D Builder</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/addons/p5.dom.min.js"></script>
+  <style>
+body{
+  margin:0;
+  overflow:hidden;
+  font-family: monospace;
+}
+
+/* MAIN MENU */
+#mainMenu{
+  position:absolute;
+  inset:0;
+  background:#5c94fc;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  z-index:9999;
+}
+
+#mainMenu h1{
+  font-size:36px;
+  color:white;
+  text-shadow:3px 3px #000;
+  margin-bottom:40px;
+}
+
+/* MINECRAFT BUTTON STYLE */
+button{
+  padding:12px 24px;
+  font-size:16px;
+  background:#8B8B8B;
+  color:white;
+  border-top:3px solid #FFFFFF;
+  border-left:3px solid #FFFFFF;
+  border-bottom:3px solid #373737;
+  border-right:3px solid #373737;
+  border-radius:0;
+  cursor:pointer;
+}
+
+button:hover{
+  background:#A0A0A0;
+}
+
+#mainMenu button{
+  margin:10px;
+}
+
+/* MATERIAL TAB BUTTON */
+#materialsTabBtn{
+  position:absolute;
+  top:10px;
+  left:10px;
+  font-weight:bold;
+  z-index:10;
+}
+
+/* PANELS */
+#materialsPanel{
+  position:absolute;
+  left:10px;
+  top:60px;
+  background:#C6C6C6;
+  padding:10px;
+  display:none;
+  flex-direction:column;
+  gap:10px;
+  z-index:10;
+
+  border-top:3px solid #FFFFFF;
+  border-left:3px solid #FFFFFF;
+  border-bottom:3px solid #373737;
+  border-right:3px solid #373737;
+}
+
+#materialList{
+  position:absolute;
+  top:10px;
+  right:10px;
+  background:#C6C6C6;
+  padding:10px;
+  max-height:200px;
+  overflow-y:auto;
+  z-index:10;
+
+  border-top:3px solid #FFFFFF;
+  border-left:3px solid #FFFFFF;
+  border-bottom:3px solid #373737;
+  border-right:3px solid #373737;
+}
+
+#dimensionsPanel{
+  position:absolute;
+  bottom:130px;
+  left:20px;
+  background:#C6C6C6;
+  padding:10px 20px;
+  font-size:16px;
+  display:none;
+  z-index:10;
+
+  border-top:3px solid #FFFFFF;
+  border-left:3px solid #FFFFFF;
+  border-bottom:3px solid #373737;
+  border-right:3px solid #373737;
+}
+
+/* CONTROL PANEL */
+#controlPanel{
+  position:absolute;
+  bottom:10px;
+  left:20px;
+  display:grid;
+  grid-template-columns:repeat(4,auto);
+  gap:5px;
+  background:#C6C6C6;
+  padding:10px;
+  z-index:10;
+
+  border-top:3px solid #FFFFFF;
+  border-left:3px solid #FFFFFF;
+  border-bottom:3px solid #373737;
+  border-right:3px solid #373737;
+}
+
+#controlPanel button{
+  font-size:12px;
+  padding:8px;
+}
+
+/* EXIT BUTTONS */
+#exitControls{
+  position:absolute;
+  bottom:10px;
+  right:10px;
+  z-index:10;
+}
+
+#exitControls button{
+  margin-left:10px;
+}
+
+/* LOGO */
+img{
+  height:300px;
+  image-rendering:pixelated;
+}
+</style>
+</head>
+
+<body>
+  
+  <!-- 🌟 MAIN MENU -->
+  <div id="mainMenu">
+    <img src="Minecraft.png" alt="meow">
+    <h3>Created by cinex.deep</h3>
+    <button onclick="createNewProject()">+ Create Project</button>
+    <button onclick="loadSavedProject()">📁 Load Project</button>
+  </div>
+  
+  <button id="materialsTabBtn">Materials Tab</button>
+  
+  <div id="materialsPanel">
+    <button onclick="spawnMaterial('2x2')">2x2 Plank</button>
+    <button onclick="spawnMaterial('2x2-vertical')">2x2 Plank Vertical</button>
+    <button onclick="spawnMaterial('plywood')">Plywood</button>
+    <button onclick="spawnMaterial('4x4x2')">4x4x2 Plank</button>
+  </div>
+  
+  <div id="materialList"></div>
+  <div id="dimensionsPanel"></div>
+  
+  <div id="controlPanel">
+    <button onclick="move('w')">↑</button>
+    <button onclick="move('a')">←</button>
+    <button onclick="move('s')">↓</button>
+    <button onclick="move('d')">→</button>
+    <button onclick="move('r')">Up</button>
+    <button onclick="move('f')">Down</button>
+    <button onclick="rotateBlock('q')">⟲</button>
+    <button onclick="rotateBlock('e')">⟳</button>
+    <button onclick="resizeBlock('z')">Shrink W</button>
+    <button onclick="resizeBlock('x')">Grow W</button>
+    <button onclick="resizeBlock('c')">Shrink H</button>
+    <button onclick="resizeBlock('v')">Grow H</button>
+    <button onclick="resizeBlock('b')">Shrink D</button>
+    <button onclick="resizeBlock('n')">Grow D</button>
+  </div>
+  
+  <div id="exitControls">
+    <button onclick="saveAndExit()">💾 Save & Exit</button>
+    <button onclick="exitOnly()">🚪 Exit Only</button>
+  </div>
+  
+  <script>
+    let blocks = [];
+    let selectedIndex = -1;
+    let woodTexture;
+    
+    function preload() {
+      woodTexture = loadImage('woodtexture.jpeg'); // Must be in same folder
+    }
+    
+    function setup() {
+      createCanvas(windowWidth, windowHeight, WEBGL);
+      createUI();
+    }
+    
+    function draw() {
+      background(135, 206, 235); // Sky blue
+      orbitControl();
+      
+      // Blue Grid Floor
+      push();
+      rotateX(HALF_PI);
+      translate(0, 0, -1);
+      fill(180, 220, 255);
+      noStroke();
+      plane(1000, 1000);
+      pop();
+      
+      stroke(0, 100, 200);
+      strokeWeight(0.5);
+      for (let i = -500; i <= 500; i += 50) {
+        line(i, 0.1, -500, i, 0.1, 500);
+        line(-500, 0.1, i, 500, 0.1, i);
+      }
+      
+      // Draw blocks
+      for (let i = 0; i < blocks.length; i++) {
+        const b = blocks[i];
+        push();
+        translate(b.x, b.y, b.z);
+        rotateX(b.rotX);
+        rotateY(b.rotY);
+        if (i === selectedIndex) {
+          stroke(255, 255, 0);
+          strokeWeight(3);
+        } else {
+          noStroke();
+        }
+        texture(woodTexture);
+        box(b.w, b.h, b.d);
+        pop();
+      }
+      
+      updateDimensionsPanel();
+    }
+    
+    function windowResized() {
+      resizeCanvas(windowWidth, windowHeight);
+    }
+    
+    function createUI() {
+      const btn = document.getElementById("materialsTabBtn");
+      const panel = document.getElementById("materialsPanel");
+      
+      btn.onclick = () => {
+        panel.style.display = panel.style.display === "none" ? "flex" : "none";
+      };
+      
+      const list = document.getElementById("materialList");
+      list.addEventListener("click", (e) => {
+        const id = e.target.dataset.id;
+        if (id) {
+          selectedIndex = parseInt(id);
+          updateMaterialList();
+        }
+      });
+    }
+    
+    function spawnMaterial(type) {
+      const block = {
+        id: `Mat${blocks.length + 1}`,
+        x: Math.floor(random(-200, 200) / 50) * 50,
+        y: -25,
+        z: Math.floor(random(-200, 200) / 50) * 50,
+        rotX: 0,
+        rotY: 0,
+        w: 100,
+        h: 20,
+        d: 100,
+        type
+      };
+      
+      if (type === '2x2') {
+        block.w = 20;
+        block.h = 20;
+        block.d = 100;
+      } else if (type === '2x2-vertical') {
+        block.w = 20;
+        block.h = 100;
+        block.d = 20;
+      } else if (type === 'plywood') {
+        block.w = 100;
+        block.h = 10;
+        block.d = 100;
+      } else if (type === '4x4x2') {
+        block.w = 40;
+        block.h = 40;
+        block.d = 20;
+      }
+      
+      blocks.push(block);
+      updateMaterialList();
+      document.getElementById("materialsPanel").style.display = "none";
+    }
+    
+    function updateMaterialList() {
+      const list = document.getElementById("materialList");
+      list.innerHTML = "<strong>Materials:</strong><br />";
+      blocks.forEach((b, i) => {
+        const selected = i === selectedIndex ? "<strong>*</strong>" : "";
+        list.innerHTML += `<div data-id="${i}">${selected} ${b.id} (${b.type})</div>`;
+      });
+    }
+    
+    function updateDimensionsPanel() {
+      const panel = document.getElementById("dimensionsPanel");
+      if (selectedIndex === -1) {
+        panel.style.display = "none";
+        return;
+      }
+      
+      const b = blocks[selectedIndex];
+      const cm = val => val;
+      const inch = val => val * 0.393701;
+      
+      panel.innerHTML = `
+        <strong>${b.id}</strong><br />
+        Width: ${cm(b.w)} cm (${inch(b.w).toFixed(2)} in)<br />
+        Height: ${cm(b.h)} cm (${inch(b.h).toFixed(2)} in)<br />
+        Depth: ${cm(b.d)} cm (${inch(b.d).toFixed(2)} in)
+      `;
+      panel.style.display = "block";
+    }
+    
+    function move(key) { keyPressed({ key }); }
+    
+    function rotateBlock(key) { keyPressed({ key }); }
+    
+    function resizeBlock(key) { keyPressed({ key }); }
+    
+    function keyPressed(e) {
+      if (selectedIndex === -1) return;
+      const b = blocks[selectedIndex];
+      const key = e.key.toLowerCase();
+      const step = radians(10);
+      
+      if (key === 'a') b.x -= 10;
+      if (key === 'd') b.x += 10;
+      if (key === 'w') b.z -= 10;
+      if (key === 's') b.z += 10;
+      if (key === 'r') b.y -= 10;
+      if (key === 'f') b.y += 10;
+      
+      if (key === 'q') b.rotX -= step;
+      if (key === 'e') b.rotY += step;
+      
+      if (key === 'z') b.w = max(10, b.w - 10);
+      if (key === 'x') b.w += 10;
+      if (key === 'c') b.h = max(10, b.h - 10);
+      if (key === 'v') b.h += 10;
+      if (key === 'b') b.d = max(10, b.d - 10);
+      if (key === 'n') b.d += 10;
+    }
+    
+    function createNewProject() {
+      blocks = [];
+      selectedIndex = -1;
+      localStorage.removeItem("savedBlocks");
+      document.getElementById("mainMenu").style.display = "none";
+    }
+    
+    function loadSavedProject() {
+      const saved = localStorage.getItem("savedBlocks");
+      if (saved) {
+        blocks = JSON.parse(saved);
+        selectedIndex = -1;
+        document.getElementById("mainMenu").style.display = "none";
+        updateMaterialList();
+      } else {
+        alert("No saved project found.");
+      }
+    }
+    
+    function saveAndExit() {
+      localStorage.setItem("savedBlocks", JSON.stringify(blocks));
+      alert("Project saved!");
+      location.reload();
+    }
+    
+    function exitOnly() {
+      if (confirm("Exit without saving?")) {
+        location.reload();
+      }
+    }
+  </script>
+</body>
+
+</html>
